@@ -53,11 +53,10 @@ if __name__ == '__main__':
         tfq.layers.PQC(model_circuit, model_readout),
     ])
 
-    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=500, load_tensors=False, save_tensors=True, step=step)
+    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=None, load_tensors=True, save_tensors=False, step=step)
     y_train_hinge = 2.0 * y_train - 1.0
     y_test_hinge = 2.0 * y_test - 1.0
 
-    sys.exit(0)
     def hinge_accuracy(y_true, y_pred):
         y_true = tf.squeeze(y_true) > 0.0
         y_pred = tf.squeeze(y_pred) > 0.0

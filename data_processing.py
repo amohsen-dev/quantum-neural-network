@@ -128,8 +128,13 @@ def get_quantum_data(subset=None, load_tensors=False, step=0):
 def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, step=0):
     if load_tensors:
         _, y_train, _, y_test = get_quantum_data(subset, load_tensors, step)
-        x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('serialized_train_{}QUBITS'.format(N_QUBITS)), tf.string)
-        x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('serialized_test_{}QUBITS'.format(N_QUBITS)), tf.string)
+        # x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS'.format(N_QUBITS)), tf.string)
+        # x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_test_{}QUBITS'.format(N_QUBITS)), tf.string)
+        x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS_{}'.format(N_QUBITS, 1)), tf.string)
+        for i in range(2,19):
+            tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS_{}'.format(N_QUBITS, i)), tf.string)
+            x_train_quantum_tensor = tf.convert_to_tensor(np.concatenate([x_train_quantum_tensor.numpy(), tensor.numpy()]))
+        x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_test_{}QUBITS'.format(N_QUBITS)), tf.string)
     else:
         t1 = time.time()
         x_train_quantum, y_train, x_test_quantum, y_test = get_quantum_data(subset, load_tensors, step)
