@@ -6,9 +6,10 @@ import tensorflow_quantum as tfq
 from tqdm import tqdm
 import cirq
 import sympy
+import sys
 import numpy as np
 import collections
-from config import N_QUBITS
+from config import N_QUBITS, EXTRA_COMPRESSION, COMPRESSION_FACTOR
 from gates import controlled_x
 import multiprocessing as mp
 import time
@@ -18,12 +19,20 @@ gate = cirq.X.controlled(N_QUBITS)
 def f(x):
     return tfq.convert_to_tensor([x]).numpy()
 
+POW2 = np.array([.5**i for i in range(2 ** COMPRESSION_FACTOR)])
+
 def generate_circuit_from_image_recursive(qubits, image):
+    if EXTRA_COMPRESSION and len(image) == 2 ** COMPRESSION_FACTOR:
+        (yield controlled_x(qubits, exponent=(POW2 * image).sum())) if image.sum() > 0 else None
+        return
     if len(image) == 1:
         (yield controlled_x(qubits)) if image[0] == 1 else None
         return
     yield from generate_circuit_from_image_recursive(qubits, image[:len(image)//2])
-    for n in range(int(np.log2(len(image)))):
+    n_xs = int(np.log2(len(image)))
+    if EXTRA_COMPRESSION:
+        n_xs -= COMPRESSION_FACTOR
+    for n in range(n_xs):
         yield cirq.X(qubits[-2-n])
     yield from generate_circuit_from_image_recursive(qubits, image[len(image)//2:])
 
@@ -74,6 +83,8 @@ def get_images(filter_digits=True, single_label=True, digits=(3,6), black_and_wh
         x_train, y_train = remove_contradicting(x_train, y_train)
 
     image_width = int(np.power(2, N_QUBITS//2))
+    if EXTRA_COMPRESSION:
+        image_width *= 2 ** (COMPRESSION_FACTOR // 2)
     x_train = tf.image.resize(x_train, (image_width, image_width)).numpy()
     x_test = tf.image.resize(x_test, (image_width, image_width)).numpy()
 
@@ -89,8 +100,9 @@ def get_quantum_data(subset=None, load_tensors=False, step=0):
                                                                       single_label=True,
                                                                       digits=(3,6),
                                                                       black_and_white=True)
+    print('image dimensions: {}'.format(x_test_classical[0].shape))
     if subset is not None:
-        startint_point = 3000 + step * 500
+        startint_point = 0 + step * 1000
         x_train_classical = x_train_classical[startint_point:(startint_point+subset)]
         x_test_classical = x_test_classical[:10]
         y_train = y_train[startint_point:(startint_point+subset)]
@@ -150,7 +162,8 @@ def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, ste
                 ll.extend(pool.map(f, batch))
         x_train_quantum_tensor = tf.convert_to_tensor(np.concatenate(ll))
         if save_tensors:
-            tf.io.write_file('serialized_train_{}QUBITS_{}'.format(N_QUBITS, step), tf.io.serialize_tensor(x_train_quantum_tensor))
+            tf.io.write_file('serialized_train_{}QUBITS(compressed)_{}'.format(N_QUBITS, step), tf.io.serialize_tensor(x_train_quantum_tensor))
+        sys.exit("finished step {}".format(step))
         print('\n----- converting test circuits to tensors ------')
         #x_test_quantum_tensor = tfq.convert_to_tensor(x_test_quantum)
         #ll = [tfq.convert_to_tensor([x]).numpy() for x in x_test_quantum]
@@ -161,8 +174,7 @@ def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, ste
                 ll.extend(pool.map(f, batch))
         x_test_quantum_tensor = tf.convert_to_tensor(np.concatenate(ll))
         if save_tensors:
-            pass
-            #tf.io.write_file('serialized_test_{}QUBITS'.format(N_QUBITS), tf.io.serialize_tensor(x_test_quantum_tensor))
+            tf.io.write_file('serialized_test_{}QUBITS'.format(N_QUBITS), tf.io.serialize_tensor(x_test_quantum_tensor))
         print('time to generate tensors: {}'.format(time.time()-t1))
     return x_train_quantum_tensor, y_train, x_test_quantum_tensor, y_test
 
