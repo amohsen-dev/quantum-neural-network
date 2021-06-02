@@ -102,11 +102,11 @@ def get_quantum_data(subset=None, load_tensors=False, step=0):
                                                                       black_and_white=True)
     print('image dimensions: {}'.format(x_test_classical[0].shape))
     if subset is not None:
-        startint_point = 0 + step * 1000
-        x_train_classical = x_train_classical[startint_point:(startint_point+subset)]
-        x_test_classical = x_test_classical[:10]
-        y_train = y_train[startint_point:(startint_point+subset)]
-        y_test = y_test[:10]
+        startint_point = 0 + step * subset
+        x_train_classical = x_train_classical[:10]#startint_point:(startint_point+subset)]
+        x_test_classical = x_test_classical[startint_point:(startint_point+subset)]
+        y_train = y_train[:10]#[startint_point:(startint_point+subset)]
+        y_test = y_test[startint_point:(startint_point+subset)]
 
     if load_tensors:
         x_train_quantum, x_test_quantum = None, None
@@ -142,11 +142,17 @@ def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, ste
         _, y_train, _, y_test = get_quantum_data(subset, load_tensors, step)
         # x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS'.format(N_QUBITS)), tf.string)
         # x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_test_{}QUBITS'.format(N_QUBITS)), tf.string)
-        x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS_{}'.format(N_QUBITS, 1)), tf.string)
-        for i in range(2,19):
-            tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_train_{}QUBITS_{}'.format(N_QUBITS, i)), tf.string)
+        x_train_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('serialized_train_{}QUBITS{}_{}'.format(N_QUBITS, '(compressed)' if EXTRA_COMPRESSION else '', 0)), tf.string)
+        for i in range(1,19):
+            tensor = tf.io.parse_tensor(tf.io.read_file('serialized_train_{}QUBITS{}_{}'.format(N_QUBITS, '(compressed)' if EXTRA_COMPRESSION else '', i)), tf.string)
             x_train_quantum_tensor = tf.convert_to_tensor(np.concatenate([x_train_quantum_tensor.numpy(), tensor.numpy()]))
-        x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_test_{}QUBITS'.format(N_QUBITS)), tf.string)
+            print('loaded {}/{} training. Current length: {}'.format(i, 18, len(x_train_quantum_tensor)))
+        #x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('data/serialized_test_{}QUBITS{}'.format(N_QUBITS,'(compressed)' if EXTRA_COMPRESSION else '')), tf.string)
+        x_test_quantum_tensor = tf.io.parse_tensor(tf.io.read_file('serialized_test_{}QUBITS{}_{}'.format(N_QUBITS,'(compressed)' if EXTRA_COMPRESSION else '', 0)), tf.string)
+        for i in range(1,8):
+            tensor = tf.io.parse_tensor(tf.io.read_file('serialized_test_{}QUBITS{}_{}'.format(N_QUBITS, '(compressed)' if EXTRA_COMPRESSION else '',i)), tf.string)
+            x_test_quantum_tensor = tf.convert_to_tensor(np.concatenate([x_test_quantum_tensor.numpy(), tensor.numpy()]))
+            print('loaded {}/{} testing. Current length: {}'.format(i, 18, len(x_test_quantum_tensor)))
     else:
         t1 = time.time()
         x_train_quantum, y_train, x_test_quantum, y_test = get_quantum_data(subset, load_tensors, step)
@@ -162,8 +168,8 @@ def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, ste
                 ll.extend(pool.map(f, batch))
         x_train_quantum_tensor = tf.convert_to_tensor(np.concatenate(ll))
         if save_tensors:
-            tf.io.write_file('serialized_train_{}QUBITS(compressed)_{}'.format(N_QUBITS, step), tf.io.serialize_tensor(x_train_quantum_tensor))
-        sys.exit("finished step {}".format(step))
+            pass
+            #tf.io.write_file('serialized_train_{}QUBITS{}_{}'.format(N_QUBITS, '(compressed)' if EXTRA_COMPRESSION else '', step), tf.io.serialize_tensor(x_train_quantum_tensor))
         print('\n----- converting test circuits to tensors ------')
         #x_test_quantum_tensor = tfq.convert_to_tensor(x_test_quantum)
         #ll = [tfq.convert_to_tensor([x]).numpy() for x in x_test_quantum]
@@ -174,7 +180,7 @@ def get_quantum_tensors(subset=None, load_tensors=False, save_tensors=False, ste
                 ll.extend(pool.map(f, batch))
         x_test_quantum_tensor = tf.convert_to_tensor(np.concatenate(ll))
         if save_tensors:
-            tf.io.write_file('serialized_test_{}QUBITS'.format(N_QUBITS), tf.io.serialize_tensor(x_test_quantum_tensor))
+            tf.io.write_file('serialized_test_{}QUBITS{}_{}'.format(N_QUBITS, '(compressed)' if EXTRA_COMPRESSION else '', step), tf.io.serialize_tensor(x_test_quantum_tensor))
         print('time to generate tensors: {}'.format(time.time()-t1))
+        #sys.exit('finished writing step {}'.format(step))
     return x_train_quantum_tensor, y_train, x_test_quantum_tensor, y_test
-

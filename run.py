@@ -11,7 +11,7 @@ import sympy
 import numpy as np
 import collections
 from gates import CircuitLayerBuilder
-from config import N_QUBITS
+from config import N_QUBITS, N_LAYERS
 from data_processing import  get_quantum_tensors
 import time
 import sys
@@ -29,8 +29,7 @@ def create_model():
     circuit.append(cirq.H(output_qubit))
 
     builder = CircuitLayerBuilder(pixel_qubits, color_qubit, output_qubit)
-    N_LAYERS = 12
-    for layer in range(N_LAYERS):
+    for layer in range(N_LAYERS//2):
         builder.add_layer(circuit, cirq.XX, 'xx{}'.format(num2words.num2words(layer)))
         builder.add_layer(circuit, cirq.ZZ, 'zz{}'.format(num2words.num2words(layer)))
 
@@ -51,7 +50,7 @@ if __name__ == '__main__':
         tfq.layers.PQC(model_circuit, model_readout),
     ])
 
-    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=1000, load_tensors=False, save_tensors=True, step=step)
+    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=None, load_tensors=True, save_tensors=False, step=step)
     y_train_hinge = 2.0 * y_train - 1.0
     y_test_hinge = 2.0 * y_test - 1.0
 
