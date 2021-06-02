@@ -1,3 +1,4 @@
+import num2words.lang_EN
 import data_processing
 from cirq import Simulator
 import numpy as np
@@ -10,7 +11,7 @@ import sympy
 import numpy as np
 import collections
 from gates import CircuitLayerBuilder
-from config import N_QUBITS
+from config import N_QUBITS, N_LAYERS
 from data_processing import  get_quantum_tensors
 import time
 import sys
@@ -28,14 +29,10 @@ def create_model():
     circuit.append(cirq.H(output_qubit))
 
     builder = CircuitLayerBuilder(pixel_qubits, color_qubit, output_qubit)
-    builder.add_layer(circuit, cirq.XX, 'xxone')
-    builder.add_layer(circuit, cirq.ZZ, 'zzone')
-    builder.add_layer(circuit, cirq.XX, 'xxtwo')
-    builder.add_layer(circuit, cirq.ZZ, 'zztwo')
-    builder.add_layer(circuit, cirq.XX, 'xxthree')
-    builder.add_layer(circuit, cirq.ZZ, 'zzthree')
-    builder.add_layer(circuit, cirq.XX, 'xxfour')
-    builder.add_layer(circuit, cirq.ZZ, 'zzfour')
+    for layer in range(N_LAYERS//2):
+        builder.add_layer(circuit, cirq.XX, 'xx{}'.format(num2words.num2words(layer)))
+        builder.add_layer(circuit, cirq.ZZ, 'zz{}'.format(num2words.num2words(layer)))
+
     # Finally, prepare the readout qubit.
     circuit.append(cirq.H(output_qubit))
 
@@ -71,12 +68,12 @@ if __name__ == '__main__':
 
     print(model.summary())
 
-    EPOCHS = 3
+    EPOCHS = 10
     BATCH_SIZE = 32
     t1 = time.time()
     qnn_history = model.fit(
         x_train, y_train_hinge,
-        batch_size=32,
+        batch_size=BATCH_SIZE,
         epochs=EPOCHS,
         verbose=1,
         validation_data=(x_test, y_test_hinge))
