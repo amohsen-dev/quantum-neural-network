@@ -1,17 +1,9 @@
 import data_processing
 from cirq import Simulator
-import numpy as np
 from cirq.contrib.svg import SVGCircuit
-import tensorflow as tf
-import tensorflow_quantum as tfq
-from tqdm import tqdm
 import cirq
-import sympy
 import numpy as np
-import collections
-from gates import CircuitLayerBuilder
 from config import N_QUBITS
-from data_processing import  get_quantum_tensors
 from gates import controlled_x
 
 
