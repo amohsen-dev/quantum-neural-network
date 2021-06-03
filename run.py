@@ -1,65 +1,46 @@
-import num2words.lang_EN
-import data_processing
-from cirq import Simulator
-import numpy as np
-from cirq.contrib.svg import SVGCircuit
 import tensorflow as tf
 import tensorflow_quantum as tfq
-from tqdm import tqdm
-import cirq
-import sympy
-import numpy as np
-import collections
-from gates import CircuitLayerBuilder
-from config import N_QUBITS, N_LAYERS
+from config import N_QUBITS, N_LAYERS, SEED, BATCH_SIZE, EPOCHS
 from data_processing import  get_quantum_tensors
 import time
-import sys
-tf.random.set_seed(229)
-
-
-def create_model():
-    pixel_qubits = cirq.GridQubit.rect(N_QUBITS, 1)
-    color_qubit = cirq.GridQubit(-1, -1)
-    output_qubit = cirq.GridQubit(-2, -2)
-    circuit = cirq.Circuit()
-
-    # Prepare the readout qubit.
-    circuit.append(cirq.X(output_qubit))
-    circuit.append(cirq.H(output_qubit))
-
-    builder = CircuitLayerBuilder(pixel_qubits, color_qubit, output_qubit)
-    for layer in range(N_LAYERS//2):
-        builder.add_layer(circuit, cirq.XX, 'xx{}'.format(num2words.num2words(layer)))
-        builder.add_layer(circuit, cirq.ZZ, 'zz{}'.format(num2words.num2words(layer)))
-
-    # Finally, prepare the readout qubit.
-    circuit.append(cirq.H(output_qubit))
-
-    return circuit, cirq.Z(output_qubit)
+from gates import create_model, hinge_accuracy
+from argparse import ArgumentParser
 
 
 if __name__ == '__main__':
-    step = int(sys.argv[1])
-    model_circuit, model_readout = create_model()
+    parser = ArgumentParser(description='quantum neural network')
+
+    parser.add_argument('--nlayers', '-l', action='store', required=False, default=N_LAYERS, help='')
+    parser.add_argument('--nqubits', '-q', action='store', required=False, default=N_QUBITS, help='')
+    parser.add_argument('--nepochs', '-e', action='store', required=False, default=EPOCHS, help='')
+    parser.add_argument('--batch_size', '-b', action='store', required=False, default=BATCH_SIZE, help='')
+    parser.add_argument('--seed', '-d', action='store', required=False, default=SEED, help='')
+    parser.add_argument('--subset', '-s', action='store', required=False, default=None, help='')
+    parser.add_argument('--step', '-i', action='store', required=False, default=None, help='')
+    parser.add_argument('--load_tensors', '-r', action='store_true', required=False, default=False, help='')
+    parser.add_argument('--save_tensors', '-w', action='store_true', required=False, default=False, help='')
+    parser.add_argument('--parallel', '-p', action='store_true', required=False, default=False, help='')
+    parser.add_argument('--multi_label', '-c', action='store_true', required=False, default=False, help='')
+    parser.add_argument('--load_sequential_range', '-c', action='store', required=False, default=None, help='')
+
+    args = parser.parse_args()
+
+    tf.random.set_seed(args.seed)
+
+    model_circuit, model_readout = create_model(n_qubits=args.nqubits, n_layers=args.nlayers)
 
     model = tf.keras.Sequential([
-        # The input is the data-circuit, encoded as a tf.string
         tf.keras.layers.Input(shape=(), dtype=tf.string),
-        # The PQC layer returns the expected value of the readout gate, range [-1,1].
         tfq.layers.PQC(model_circuit, model_readout),
     ])
 
-    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=None, load_tensors=True, save_tensors=False, step=step)
-    y_train_hinge = 2.0 * y_train - 1.0
-    y_test_hinge = 2.0 * y_test - 1.0
-
-    def hinge_accuracy(y_true, y_pred):
-        y_true = tf.squeeze(y_true) > 0.0
-        y_pred = tf.squeeze(y_pred) > 0.0
-        result = tf.cast(y_true == y_pred, tf.float32)
-
-        return tf.reduce_mean(result)
+    x_train, y_train, x_test, y_test = get_quantum_tensors(subset=args.subset,
+                                                           load_tensors=args.load_tensors,
+                                                           load_sequential_range=args.load_sequential_range,
+                                                           save_tensors=args.save_tensors,
+                                                           step=args.step,
+                                                           single_label=not args.multi_label,
+                                                           parallel=args.parallel)
 
     model.compile(
         loss=tf.keras.losses.Hinge(),
@@ -68,15 +49,15 @@ if __name__ == '__main__':
 
     print(model.summary())
 
-    EPOCHS = 10
-    BATCH_SIZE = 32
     t1 = time.time()
     qnn_history = model.fit(
-        x_train, y_train_hinge,
-        batch_size=BATCH_SIZE,
-        epochs=EPOCHS,
+        x_train, y_train,
+        batch_size=args.batch_size,
+        epochs=args.nepochs,
         verbose=1,
-        validation_data=(x_test, y_test_hinge))
+        validation_data=(x_test, y_test))
+
     print('time to fit model : {}'.format(time.time() - t1))
+
     qnn_results = model.evaluate(x_test, y_test)
 

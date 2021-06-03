@@ -1,45 +1,7 @@
-import numpy as np
 import cirq
-import itertools
 import sympy
-
-class MultiPauliPowerGate(cirq.Gate):
-    def __init__(self, paulis, exponent = 1.):
-        super(MultiPauliPowerGate, self)
-        self._n = len(paulis)
-        self._paulis = paulis
-        self._matrix = cirq.unitary(self._paulis[0])
-        self._name = self._paulis[0]._name
-        self._exponent = exponent
-        for pauli in paulis[1:]:
-            self._matrix = np.kron(self._matrix, cirq.unitary(pauli))
-            self._name += pauli._name
-        if self._exponent != 1.:
-            self._matrix = cirq.linalg.map_eigenvalues(self._matrix, lambda b: b**self._exponent)
-
-    def _num_qubits_(self):
-        return self._n
-
-    def _unitary_(self):
-        return self._matrix
-
-    def _circuit_diagram_info_(self, args):
-        return cirq.protocols.CircuitDiagramInfo(wire_symbols=[c for c in self._name],
-                                                 exponent=self._exponent,
-                                                 exponent_qubit_index=len(self._name)-2)
-
-
-class CircuitLayerBuilder2:
-    def __init__(self, pixel_qubits, color_qubit, output_qubit):
-        self._pixel_qubits = pixel_qubits
-        self._color_qubit = color_qubit
-        self._output_qubit = output_qubit
-
-    def add_3q_layer(self, circuit, gate_name):
-        for n, qubit in enumerate(self._pixel_qubits):
-            symbol = sympy.Symbol(gate_name.lower() + '_' + str(n))
-            gate = MultiPauliPowerGate(paulis=[getattr(cirq, p) for p in gate_name], exponent=symbol)
-            circuit.append(gate(qubit, self._color_qubit, self._output_qubit))
+import tensorflow as tf
+import num2words.lang_EN
 
 
 class CircuitLayerBuilder:
@@ -54,12 +16,40 @@ class CircuitLayerBuilder:
             circuit.append(gate(qubit, self.output_qubit) ** symbols[n])
             circuit.append(gate(self.color_qubit, self.output_qubit) ** symbols[n])
 
+
 def controlled_x(qubits, exponent=1.):
     if len(qubits) == 2:
-        yield (cirq.CNOT(*qubits) ** exponent)
+        yield cirq.CNOT(*qubits) ** exponent
         return
-    yield (cirq.CNOT(qubits[-2], qubits[-1]) ** (exponent/2.))
+    yield cirq.CNOT(qubits[-2], qubits[-1]) ** (exponent/2.)
     yield from controlled_x(qubits[:-1], 1.)
-    yield (cirq.CNOT(qubits[-2], qubits[-1]) ** (-exponent/2.))
+    yield cirq.CNOT(qubits[-2], qubits[-1]) ** (-exponent/2.)
     yield from controlled_x(qubits[:-1], 1.)
-    yield from (controlled_x(qubits[:-2] + [qubits[-1]], exponent/2.))
+    yield from controlled_x(qubits[:-2] + [qubits[-1]], exponent/2.)
+
+
+def hinge_accuracy(y_true, y_pred):
+    y_true = tf.squeeze(y_true) > 0.0
+    y_pred = tf.squeeze(y_pred) > 0.0
+    result = tf.cast(y_true == y_pred, tf.float32)
+
+    return tf.reduce_mean(result)
+
+
+def create_model(n_qubits, n_layers):
+    pixel_qubits = cirq.GridQubit.rect(n_qubits, 1)
+    color_qubit = cirq.GridQubit(-1, -1)
+    output_qubit = cirq.GridQubit(-2, -2)
+    circuit = cirq.Circuit()
+
+    circuit.append(cirq.X(output_qubit))
+    circuit.append(cirq.H(output_qubit))
+
+    builder = CircuitLayerBuilder(pixel_qubits, color_qubit, output_qubit)
+    for layer in range(n_layers // 2):
+        builder.add_layer(circuit, cirq.XX, 'xx{}'.format(num2words.num2words(layer)))
+        builder.add_layer(circuit, cirq.ZZ, 'zz{}'.format(num2words.num2words(layer)))
+
+    circuit.append(cirq.H(output_qubit))
+
+    return circuit, cirq.Z(output_qubit)
