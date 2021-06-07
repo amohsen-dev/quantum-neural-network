@@ -14,7 +14,6 @@ class CircuitLayerBuilder:
         symbols = sympy.symbols(prefix+'0:{}'.format(len(self.pixel_qubits)))
         for n, qubit in enumerate(self.pixel_qubits):
             circuit.append(gate(qubit, self.output_qubit) ** symbols[n])
-            circuit.append(gate(self.color_qubit, self.output_qubit) ** symbols[n])
 
 
 def controlled_x(qubits, exponent=1.):

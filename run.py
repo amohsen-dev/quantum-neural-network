@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_quantum as tfq
-from config import N_QUBITS, N_LAYERS, SEED, BATCH_SIZE, EPOCHS
+from config import N_QUBITS, N_LAYERS, SEED, BATCH_SIZE, EPOCHS, COMPRESSION_FACTOR
 from data_processing import  get_quantum_tensors
 import time
 from gates import create_model, hinge_accuracy
@@ -10,18 +10,19 @@ from argparse import ArgumentParser
 if __name__ == '__main__':
     parser = ArgumentParser(description='quantum neural network')
 
-    parser.add_argument('--nlayers', '-l', action='store', required=False, default=N_LAYERS, help='')
-    parser.add_argument('--nqubits', '-q', action='store', required=False, default=N_QUBITS, help='')
-    parser.add_argument('--nepochs', '-e', action='store', required=False, default=EPOCHS, help='')
-    parser.add_argument('--batch_size', '-b', action='store', required=False, default=BATCH_SIZE, help='')
-    parser.add_argument('--seed', '-d', action='store', required=False, default=SEED, help='')
-    parser.add_argument('--subset', '-s', action='store', required=False, default=None, help='')
-    parser.add_argument('--step', '-i', action='store', required=False, default=None, help='')
+    parser.add_argument('--nlayers', '-l', action='store', type=int, required=False, default=N_LAYERS, help='')
+    parser.add_argument('--nqubits', '-q', action='store', type=int, required=False, default=N_QUBITS, help='')
+    parser.add_argument('--nepochs', '-e', action='store', type=int, required=False, default=EPOCHS, help='')
+    parser.add_argument('--batch_size', '-b', action='store', type=int, required=False, default=BATCH_SIZE, help='')
+    parser.add_argument('--seed', '-d', action='store', type=int, required=False, default=SEED, help='')
+    parser.add_argument('--subset', '-s', action='store', type=int, required=False, default=None, help='')
+    parser.add_argument('--step', '-i', action='store', type=int, required=False, default=None, help='')
     parser.add_argument('--load_tensors', '-r', action='store_true', required=False, default=False, help='')
     parser.add_argument('--save_tensors', '-w', action='store_true', required=False, default=False, help='')
     parser.add_argument('--parallel', '-p', action='store_true', required=False, default=False, help='')
     parser.add_argument('--multi_label', '-c', action='store_true', required=False, default=False, help='')
-    parser.add_argument('--load_sequential_range', '-c', action='store', required=False, default=None, help='')
+    parser.add_argument('--load_sequential_range', action='store', required=False, default=None, help='')
+    parser.add_argument('--compression_factor', action='store', type=int, required=False, default=COMPRESSION_FACTOR, help='')
 
     args = parser.parse_args()
 
@@ -40,7 +41,9 @@ if __name__ == '__main__':
                                                            save_tensors=args.save_tensors,
                                                            step=args.step,
                                                            single_label=not args.multi_label,
-                                                           parallel=args.parallel)
+                                                           parallel=args.parallel,
+                                                           compression_factor=args.compression_factor,
+                                                           nqubits=args.nqubits)
 
     model.compile(
         loss=tf.keras.losses.Hinge(),
