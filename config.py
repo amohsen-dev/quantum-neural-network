@@ -1,3 +1,4 @@
+# default values
 N_QUBITS = 4
 N_LAYERS = 8
 EXTRA_COMPRESSION = False
