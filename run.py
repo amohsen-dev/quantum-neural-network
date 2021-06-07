@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_quantum as tfq
-from config import N_QUBITS, N_LAYERS, SEED, BATCH_SIZE, EPOCHS, COMPRESSION_FACTOR
+from config import N_QUBITS, N_LAYERS, SEED, BATCH_SIZE, EPOCHS, EXTRA_COMPRESSION_FACTOR
 from data_processing import  get_quantum_tensors
 import time
 from gates import create_model, hinge_accuracy
@@ -22,7 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--parallel', '-p', action='store_true', required=False, default=False, help='')
     parser.add_argument('--multi_label', '-c', action='store_true', required=False, default=False, help='')
     parser.add_argument('--load_sequential_range', action='store', required=False, default=None, help='')
-    parser.add_argument('--extra_compression_factor', action='store', type=int, required=False, default=COMPRESSION_FACTOR, help='')
+    parser.add_argument('--extra_compression_factor', action='store', type=int, required=False,
+                        default=EXTRA_COMPRESSION_FACTOR, help='')
 
     args = parser.parse_args()
 
