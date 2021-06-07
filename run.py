@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_tensors', '-w', action='store_true', required=False, default=False, help='')
     parser.add_argument('--parallel', '-p', action='store_true', required=False, default=False, help='')
     parser.add_argument('--multi_label', '-c', action='store_true', required=False, default=False, help='')
-    parser.add_argument('--load_sequential_range', '-c', action='store', required=False, default=None, help='')
+    parser.add_argument('--load_sequential_range', action='store', required=False, default=None, help='')
 
     args = parser.parse_args()
 

@@ -123,7 +123,7 @@ def get_quantum_data(subset=None, load_tensors=False, step=0, single_label=True,
                     x_train_quantum.extend(quantum_batch)
         else:
             for image in tqdm(x_train_classical):
-                circuit, qubits = circuit_from_image(image.flatten())
+                circuit = circuit_from_image(image.flatten())
                 x_train_quantum.append(circuit)
 
         print('----- generating test quantum circuits ------')
@@ -135,9 +135,9 @@ def get_quantum_data(subset=None, load_tensors=False, step=0, single_label=True,
                     quantm_batch = pool.map(circuit_from_image, [image.flatten() for image in batch])
                     x_test_quantum.extend(quantm_batch)
         else:
-            x_test_quantum = []
             for image in tqdm(x_test_classical):
-                x_test_quantum.append(circuit_from_image(image.flatten())[0])
+                circuit = circuit_from_image(image.flatten())
+                x_test_quantum.append(circuit)
 
     return x_train_quantum, y_train, x_test_quantum, y_test
 
