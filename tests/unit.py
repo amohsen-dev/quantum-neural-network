@@ -3,6 +3,7 @@ import data_processing
 from cirq import Simulator
 from cirq.contrib.svg import SVGCircuit
 import cirq
+import os
 import numpy as np
 from config import N_QUBITS
 from gates import controlled_x
@@ -22,7 +23,8 @@ class ComponentsTest(unittest.TestCase):
             print('{} x ({},{})'.format(format(i//2, '0{}b'.format(N_QUBITS)), int(out_state_rep[i]), int(out_state_rep[i + 1])))
         #SVGCircuit(circuit)
 
-        reference = np.loadtxt('testing_image_to_circuit.txt').view(complex)
+        ref_path = os.path.join(os.getcwd(), 'tests/testing_image_to_circuit.txt') 
+        reference = np.loadtxt(ref_path).view(complex)
         np.testing.assert_allclose(reference, circuit.unitary())
 
 
