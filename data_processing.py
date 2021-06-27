@@ -31,14 +31,17 @@ def generate_circuit_from_image_recursive(qubits, image, extra_compression_facto
     yield from generate_circuit_from_image_recursive(qubits, image[len(image)//2:], extra_compression_factor)
 
 
-def circuit_from_image(image, nqubits, extra_compression_factor=0):
+def circuit_from_image(image, nqubits, extra_compression_factor=0, return_qubits=False):
     qubits = cirq.GridQubit.rect(nqubits, 1)
     qubits.append(cirq.GridQubit(-1, -1))
     circuit = cirq.Circuit()
     circuit.append((cirq.H(qubit) for qubit in qubits[:-1]))
     circuit.append(generate_circuit_from_image_recursive(qubits, image,
                                                          extra_compression_factor=extra_compression_factor))
-    return circuit#, qubits
+    if return_qubits:
+        return circuit, qubits
+    else:
+        return circuit
 
 
 def remove_contradicting(xs, ys):
